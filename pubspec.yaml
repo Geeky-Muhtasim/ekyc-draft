@@ -32,7 +32,7 @@ dependencies:
   path: ^1.9.1
   path_provider: ^2.1.5
   permission_handler: ^11.3.0
-  signature: ^5.4.0
+  signature: ^6.3.0
   smooth_page_indicator: ^1.2.1
   url_launcher: ^6.3.1
 
