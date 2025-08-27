@@ -20,7 +20,7 @@ class IntroPage extends StatelessWidget {
   }
 
   void _onTapSkip() {
-    NavigatorUtil.pushNamed(AppRoute.login);
+    NavigatorUtil.pushNamed(AppRoute.home);
     
   }
 
@@ -36,7 +36,7 @@ class IntroPage extends StatelessWidget {
           previous.currentPage != current.currentPage,
       listener: (BuildContext context, IntroState state) {
         if (state is IntroCompleted) {
-          NavigatorUtil.pushNamed(AppRoute.login);
+          NavigatorUtil.pushNamed(AppRoute.home);
         } else {
           pageController.animateToPage(
             state.currentPage,
@@ -122,7 +122,7 @@ class IntroPage extends StatelessWidget {
 
                               if (state.isLastPage) {
                                 NavigatorUtil.pushNamed(
-                                  AppRoute.login,
+                                  AppRoute.home,
                                 );
                               } else {
                                 bloc.add(IntroNextPressed());

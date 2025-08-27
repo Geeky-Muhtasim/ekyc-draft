@@ -345,15 +345,18 @@ import 'dart:io';
 
 import 'package:bangladesh_finance_ekyc/core/constant/color_contsant.dart';
 import 'package:bangladesh_finance_ekyc/core/route/app_route.dart';
+import 'package:bangladesh_finance_ekyc/core/service/nominee_service.dart';
 import 'package:bangladesh_finance_ekyc/core/style/app_style.dart';
 import 'package:bangladesh_finance_ekyc/core/util/navigator_util.dart';
 import 'package:bangladesh_finance_ekyc/feature/sign_up/nominee_info/bloc/nominee_info_bloc.dart';
 import 'package:bangladesh_finance_ekyc/feature/sign_up/nominee_info/bloc/nominee_info_event.dart';
 import 'package:bangladesh_finance_ekyc/feature/sign_up/nominee_info/bloc/nominee_info_state.dart';
+import 'package:bangladesh_finance_ekyc/shared/state/signup_state.dart';
 import 'package:bangladesh_finance_ekyc/widget/common/glowing_step_indicator_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:signature/signature.dart';
 
@@ -402,7 +405,8 @@ class _NomineeInfoViewState extends State<_NomineeInfoView> {
       lastDate: DateTime.now(),
     );
     if (picked != null) {
-      dobController.text = "${picked.day}/${picked.month}/${picked.year}";
+      // dobController.text = "${picked.day}/${picked.month}/${picked.year}";
+      dobController.text = DateFormat('yyyy-MM-dd').format(picked);
     }
   }
 
@@ -411,7 +415,8 @@ class _NomineeInfoViewState extends State<_NomineeInfoView> {
       final bytes = await _signatureController.toPngBytes();
       if (bytes != null) {
         final dir = await getApplicationDocumentsDirectory();
-        final path = '${dir.path}/signature_${DateTime.now().millisecondsSinceEpoch}.png';
+        final path =
+            '${dir.path}/signature_${DateTime.now().millisecondsSinceEpoch}.png';
         final file = await File(path).writeAsBytes(bytes);
         return file.path;
       }
@@ -420,13 +425,13 @@ class _NomineeInfoViewState extends State<_NomineeInfoView> {
   }
 
   SnackBar _customSnackBar(String text) => SnackBar(
-        content: Text(text, style: const TextStyle(color: Colors.white)),
-        backgroundColor: ColorConstant.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        duration: const Duration(seconds: 2),
-      );
+    content: Text(text, style: const TextStyle(color: Colors.white)),
+    backgroundColor: ColorConstant.primary,
+    behavior: SnackBarBehavior.floating,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    duration: const Duration(seconds: 2),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -477,32 +482,105 @@ class _NomineeInfoViewState extends State<_NomineeInfoView> {
                             borderRadius: BorderRadius.circular(30),
                           ),
                         ),
+                        // onPressed: () async {
+                        //   final bloc = context.read<NomineeInfoBloc>();
+                        //   final state = bloc.state;
+
+                        //   if (_formKey.currentState!.validate()) {
+                        //     String? signaturePath = state.photoPath;
+
+                        //     if ((signaturePath == null || signaturePath.isEmpty) &&
+                        //         _signatureController.isNotEmpty) {
+                        //       signaturePath = await _saveDrawnSignature();
+                        //       if (signaturePath != null) {
+                        //         bloc.add(UpdatePhotoPath(signaturePath));
+                        //       }
+                        //     }
+
+                        //     if (signaturePath == null || signaturePath.isEmpty) {
+                        //       ScaffoldMessenger.of(context).showSnackBar(
+                        //         _customSnackBar("Please add a signature"),
+                        //       );
+                        //       return;
+                        //     }
+
+                        //     NavigatorUtil.pushNamed(AppRoute.photoCapture);
+                        //   }
+                        // },
                         onPressed: () async {
                           final bloc = context.read<NomineeInfoBloc>();
                           final state = bloc.state;
 
                           if (_formKey.currentState!.validate()) {
-                            String? signaturePath = state.photoPath;
-
-                            if ((signaturePath == null || signaturePath.isEmpty) &&
-                                _signatureController.isNotEmpty) {
-                              signaturePath = await _saveDrawnSignature();
-                              if (signaturePath != null) {
-                                bloc.add(UpdatePhotoPath(signaturePath));
+                            try {
+                              // Save drawn signature if needed
+                              String? signaturePath = state.photoPath;
+                              if ((signaturePath == null ||
+                                      signaturePath.isEmpty) &&
+                                  _signatureController.isNotEmpty) {
+                                signaturePath = await _saveDrawnSignature();
+                                if (signaturePath != null) {
+                                  bloc.add(UpdatePhotoPath(signaturePath));
+                                }
                               }
-                            }
 
-                            if (signaturePath == null || signaturePath.isEmpty) {
+                              if (signaturePath == null ||
+                                  signaturePath.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  _customSnackBar("Please add a signature"),
+                                );
+                                return;
+                              }
+
+                              // Submit nominee info
+                              final nomineeId =
+                                  await NomineeService.submitNomineeDetails(
+                                    ref_id: SignupState().nidId!,
+                                    name: nameController.text.trim(),
+                                    fatherName: fatherController.text.trim(),
+                                    motherName: motherController.text.trim(),
+                                    relationship: relationshipController.text
+                                        .trim(),
+                                    address: addressController.text.trim(),
+                                    dateOfBirth: dobController.text.trim(),
+                                    nidNo: nidController.text.trim(),
+                                  );
+
+                              if (nomineeId != null) {
+                                SignupState().nomineeId = nomineeId;
+
+                                print(
+                                  "✅ Nominee Info Submitted: ID = $nomineeId",
+                                );
+                                print(
+                                  "✅ SignUp State now: ID = ${SignupState()}",
+                                );
+
+                                final nomineePhoto = File(
+                                  state.nomineePhotoPath!,
+                                );
+                                final signatureFile = File(signaturePath);
+
+                                await NomineeService.uploadNomineeFiles(
+                                  nomineeId: nomineeId,
+                                  nomineeImage: nomineePhoto,
+                                  nomineeSignature: signatureFile,
+                                );
+
+                                NavigatorUtil.pushNamed(AppRoute.photoCapture);
+                              }
+                            } catch (e) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                _customSnackBar("Please add a signature"),
+                                _customSnackBar("❌ ${e.toString()}"),
                               );
-                              return;
                             }
-
-                            NavigatorUtil.pushNamed(AppRoute.photoCapture);
                           }
                         },
-                        child: const Text("Continue", style: TextStyle(color: Colors.white)),
+
+                        child: const Text(
+                          "Continue",
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -516,8 +594,11 @@ class _NomineeInfoViewState extends State<_NomineeInfoView> {
     );
   }
 
-  Widget _buildInput(String label, TextEditingController controller,
-      [TextInputType type = TextInputType.text]) {
+  Widget _buildInput(
+    String label,
+    TextEditingController controller, [
+    TextInputType type = TextInputType.text,
+  ]) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
@@ -527,8 +608,9 @@ class _NomineeInfoViewState extends State<_NomineeInfoView> {
           labelText: label,
           border: const OutlineInputBorder(),
         ),
-        validator: (value) =>
-            (value == null || value.trim().isEmpty) ? 'This field is required' : null,
+        validator: (value) => (value == null || value.trim().isEmpty)
+            ? 'This field is required'
+            : null,
       ),
     );
   }
@@ -548,7 +630,10 @@ class _NomineeInfoViewState extends State<_NomineeInfoView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Signature (Draw or Upload)", style: TextStyle(fontWeight: FontWeight.bold)),
+        const Text(
+          "Signature (Draw or Upload)",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
         Container(
           height: 150,
@@ -567,7 +652,9 @@ class _NomineeInfoViewState extends State<_NomineeInfoView> {
             ElevatedButton(
               onPressed: () => _signatureController.clear(),
               child: const Text("Clear"),
-              style: ElevatedButton.styleFrom(backgroundColor: ColorConstant.error),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: ColorConstant.error,
+              ),
             ),
           ],
         ),
@@ -585,7 +672,9 @@ class _NomineeInfoViewState extends State<_NomineeInfoView> {
               );
             }
           },
-          style: ElevatedButton.styleFrom(backgroundColor: ColorConstant.foreground),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: ColorConstant.foreground,
+          ),
         ),
         const SizedBox(height: 16),
         if (path != null && path.isNotEmpty)
@@ -595,24 +684,31 @@ class _NomineeInfoViewState extends State<_NomineeInfoView> {
               const Text("Signature Preview:"),
               const SizedBox(height: 8),
               Container(
-                decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey),
+                ),
                 child: Image.file(File(path), height: 100),
               ),
             ],
           ),
-
       ],
     );
   }
 
-  Widget _buildNomineePhotoSection(BuildContext context, NomineeInfoState state) {
+  Widget _buildNomineePhotoSection(
+    BuildContext context,
+    NomineeInfoState state,
+  ) {
     final path = state.nomineePhotoPath;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 24),
-        const Text("Upload Nominee Photo", style: TextStyle(fontWeight: FontWeight.bold)),
+        const Text(
+          "Upload Nominee Photo",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
         ElevatedButton.icon(
           icon: const Icon(Icons.camera_alt),
@@ -621,13 +717,17 @@ class _NomineeInfoViewState extends State<_NomineeInfoView> {
             final picker = ImagePicker();
             final picked = await picker.pickImage(source: ImageSource.gallery);
             if (picked != null) {
-              context.read<NomineeInfoBloc>().add(UpdateNomineeImagePath(picked.path));
+              context.read<NomineeInfoBloc>().add(
+                UpdateNomineeImagePath(picked.path),
+              );
               ScaffoldMessenger.of(context).showSnackBar(
                 _customSnackBar("Nominee photo uploaded"),
               );
             }
           },
-          style: ElevatedButton.styleFrom(backgroundColor: ColorConstant.foreground),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: ColorConstant.foreground,
+          ),
         ),
         const SizedBox(height: 16),
         if (path != null && path.isNotEmpty)
@@ -637,7 +737,9 @@ class _NomineeInfoViewState extends State<_NomineeInfoView> {
               const Text("Nominee Photo Preview:"),
               const SizedBox(height: 8),
               Container(
-                decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey),
+                ),
                 child: Image.file(File(path), height: 100),
               ),
             ],

@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 
 class OtpService {
   final String baseUrl = 'https://192.168.0.53:8070'; // replace with real backend URL
+  // final String baseUrl = 'https://172.50.10.121:8070'; // replace with real backend URL
 
   Future<Map<String, dynamic>> sendOtp(String mobileNo) async {
     final url = Uri.parse('$baseUrl/otp/send');

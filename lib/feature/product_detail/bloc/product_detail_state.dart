@@ -8,12 +8,10 @@ class ProductDetailLoading extends ProductDetailState {}
 
 class ProductDetailLoaded extends ProductDetailState {
   final ProductModel product;
-
   ProductDetailLoaded({required this.product});
 }
 
 class ProductDetailError extends ProductDetailState {
   final String message;
-
   ProductDetailError({required this.message});
 }

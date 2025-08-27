@@ -9,6 +9,7 @@ class OcrApiService {
     required File backImage,
   }) async {
     final uri = Uri.parse('http://192.168.0.53:8010/extract-nid');
+    // final uri = Uri.parse('http://172.50.10.121/extract-nid');
 
     final request = http.MultipartRequest('POST', uri)
       ..files.add(await http.MultipartFile.fromPath(

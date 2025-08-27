@@ -194,10 +194,13 @@ import 'dart:io';
 
 import 'package:bangladesh_finance_ekyc/core/constant/color_contsant.dart';
 import 'package:bangladesh_finance_ekyc/core/route/app_route.dart';
+import 'package:bangladesh_finance_ekyc/core/service/nid_service.dart';
 import 'package:bangladesh_finance_ekyc/core/style/app_style.dart';
+import 'package:bangladesh_finance_ekyc/core/util/navigator_util.dart';
 import 'package:bangladesh_finance_ekyc/feature/sign_up/scanned_data/bloc/scanned_data_bloc.dart';
 import 'package:bangladesh_finance_ekyc/feature/sign_up/scanned_data/bloc/scanned_data_event.dart';
 import 'package:bangladesh_finance_ekyc/feature/sign_up/scanned_data/bloc/scanned_data_state.dart';
+import 'package:bangladesh_finance_ekyc/shared/state/signup_state.dart';
 import 'package:bangladesh_finance_ekyc/widget/common/glowing_step_indicator_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -237,19 +240,33 @@ class _ScannedDataPageState extends State<ScannedDataPage> {
     super.initState();
     final state = context.read<ScannedDataBloc>().state;
     nidController = TextEditingController(text: state.extractedData['nid']);
-    nameEnController = TextEditingController(text: state.extractedData['nameEn']);
-    nameBnController = TextEditingController(text: state.extractedData['nameBn']);
-    fatherController = TextEditingController(text: state.extractedData['fatherBn']);
-    motherController = TextEditingController(text: state.extractedData['motherBn']);
+    nameEnController = TextEditingController(
+      text: state.extractedData['nameEn'],
+    );
+    nameBnController = TextEditingController(
+      text: state.extractedData['nameBn'],
+    );
+    fatherController = TextEditingController(
+      text: state.extractedData['fatherBn'],
+    );
+    motherController = TextEditingController(
+      text: state.extractedData['motherBn'],
+    );
     dobController = TextEditingController(text: state.extractedData['dob']);
-    presentAddressController = TextEditingController(text: state.extractedData['presentAddress']);
-    permanentAddressController = TextEditingController(text: state.extractedData['permanentAddress']);
+    presentAddressController = TextEditingController(
+      text: state.extractedData['presentAddress'],
+    );
+    permanentAddressController = TextEditingController(
+      text: state.extractedData['permanentAddress'],
+    );
   }
 
   Future<void> _selectDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.tryParse(dobController.text.replaceAll('/', '-')) ?? DateTime(2000),
+      initialDate:
+          DateTime.tryParse(dobController.text.replaceAll('/', '-')) ??
+          DateTime(2000),
       firstDate: DateTime(1900),
       lastDate: DateTime.now(),
     );
@@ -259,30 +276,60 @@ class _ScannedDataPageState extends State<ScannedDataPage> {
     }
   }
 
-  void _submit() {
+  void _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final bloc = context.read<ScannedDataBloc>()
-      ..add(ScannedDataInitialized({
-        'nid': nidController.text.trim(),
-        'nameEn': nameEnController.text.trim(),
-        'nameBn': nameBnController.text.trim(),
-        'fatherBn': fatherController.text.trim(),
-        'motherBn': motherController.text.trim(),
-        'dob': dobController.text.trim(),
-        'presentAddress': presentAddressController.text.trim(),
-        'permanentAddress': permanentAddressController.text.trim(),
-      }));
+    final nid = nidController.text.trim();
+    final nameEn = nameEnController.text.trim();
+    final nameBn = nameBnController.text.trim();
+    final fatherBn = fatherController.text.trim();
+    final motherBn = motherController.text.trim();
+    final dob = _formatDate(dobController.text.trim()); // Ensure yyyy-MM-dd
+    final presentAddress = presentAddressController.text.trim();
+    final permanentAddress = permanentAddressController.text.trim();
 
-    // Pass front/back NID images to the next page using named route args (if needed, customize AppRoute)
-    Navigator.pushNamed(
-      context,
-      AppRoute.additionalInfo,
-      arguments: {
-        'nidFrontImage': widget.nidFrontImage,
-        'nidBackImage': widget.nidBackImage,
-      },
-    );
+    try {
+      final nidId = await NidService.submitNidData(
+        nid: nid,
+        nameEn: nameEn,
+        nameBn: nameBn,
+        fatherNameBn: fatherBn,
+        motherNameBn: motherBn,
+        dob: dob,
+        presentAddress: presentAddress,
+        permanentAddress: permanentAddress,
+      );
+
+      // ✅ Store in singleton
+      SignupState().nidId = nidId;
+      print("✅ NID Submission successful. nidId = $nidId");
+      print("✅ Current SignupState: ${SignupState()}");
+
+      NavigatorUtil.pushNamed(
+        AppRoute.additionalInfo,
+        arguments: {
+          'nidFrontImage': widget.nidFrontImage,
+          'nidBackImage': widget.nidBackImage,
+        },
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: ${e.toString()}")),
+      );
+    }
+  }
+
+  // Optional helper
+  String _formatDate(String dob) {
+    try {
+      final parts = dob.split('/');
+      if (parts.length == 3) {
+        return '${parts[2]}-${parts[1].padLeft(2, '0')}-${parts[0].padLeft(2, '0')}';
+      }
+      return dob;
+    } catch (_) {
+      return dob;
+    }
   }
 
   @override
@@ -320,7 +367,8 @@ class _ScannedDataPageState extends State<ScannedDataPage> {
                   setState(() {
                     addressSame = val ?? false;
                     if (addressSame) {
-                      permanentAddressController.text = presentAddressController.text;
+                      permanentAddressController.text =
+                          presentAddressController.text;
                     } else {
                       permanentAddressController.clear();
                     }
@@ -348,7 +396,7 @@ class _ScannedDataPageState extends State<ScannedDataPage> {
                     style: TextStyle(color: ColorConstant.foreground),
                   ),
                 ),
-              )
+              ),
             ],
           ),
         ),

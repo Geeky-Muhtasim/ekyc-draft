@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 
 class ProductService {
   final String baseUrl = 'http://192.168.0.53:8070'; // Replace with actual
+  // final String baseUrl = 'http://172.50.10.121:8070'; // Replace with actual
 
   Future<List<Map<String, dynamic>>> fetchAllProducts() async {
     final response = await http.get(Uri.parse('$baseUrl/product/all'));
